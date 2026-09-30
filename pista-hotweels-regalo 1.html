@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06123a">
+<meta name="color-scheme" content="dark">
+<title>Pista de campeones</title>
+
+<!-- En iPhone/Mac se usa SF Pro (tipografía del sistema). En el resto cae a Inter. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..900;1,14..32,400..900&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#f4f7ff;
+    --ink-2:rgba(236,242,255,.72);
+    --orange:#ff7a00;
+    --orange-2:#ff4d00;
+    --blue:#1d5bff;
+    --yellow:#ffd400;
+
+    --sans:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+
+    --glass:rgba(10,22,72,.58);
+    --glass-edge:rgba(255,255,255,.14);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+
+  body{
+    min-height:100vh;
+    background:#06123a;
+    overflow:hidden;
+    overscroll-behavior:none;
+    font-family:var(--sans);
+    font-optical-sizing:auto;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{ font:inherit; color:inherit; }
+  :focus-visible{ outline:3px solid rgba(255,170,60,.8); outline-offset:3px; }
+
+  #fx{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    z-index:25;
+  }
+
+  .scene{
+    position:fixed;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    z-index:2;
+  }
+  .scene:not(.active){ display:none; }
+
+  .eyebrow{
+    font-size:.72rem;
+    font-weight:700;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#ffb45c;
+    margin-bottom:6px;
+  }
+
+  /* Títulos de carrera: sans pesada en cursiva, tracking negativo */
+  .race-title{
+    font-weight:900;
+    font-style:italic;
+    letter-spacing:-.035em;
+    line-height:1.0;
+    text-wrap:balance;
+  }
+
+  /* ============================================================
+     ESCENA 1: LA PISTA
+     ============================================================ */
+  .race-scene{
+    justify-content:flex-start;
+    gap:8px;
+    padding:calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    overflow:hidden;
+    background:radial-gradient(120% 70% at 50% 34%, #1c42bf 0%, #0b1f6e 46%, #040b2e 100%);
+  }
+
+  .spot{
+    position:absolute;
+    width:90vmax; height:90vmax;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:0;
+  }
+  .spot.a{ left:-45vmax; top:-50vmax; background:radial-gradient(circle, rgba(255,122,0,.34), transparent 60%); }
+  .spot.b{ right:-45vmax; top:-48vmax; background:radial-gradient(circle, rgba(80,140,255,.4), transparent 60%); }
+
+  .floor{
+    position:absolute;
+    left:-40%; right:-40%;
+    bottom:0; height:56%;
+    background-image:
+      linear-gradient(rgba(255,140,40,.22) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,170,255,.16) 1px, transparent 1px);
+    background-size:44px 44px;
+    transform:perspective(420px) rotateX(58deg);
+    transform-origin:50% 100%;
+    -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
+    mask-image:linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
+    animation:floorMove 2.6s linear infinite;
+    pointer-events:none;
+    z-index:0;
+  }
+  @keyframes floorMove{ to{ background-position:0 44px; } }
+
+  .race-head{ position:relative; z-index:3; text-align:center; }
+  .race-head h1{ font-size:clamp(1.7rem, 7.4vw, 2.6rem); }
+  .race-head h1 em{
+    font-style:italic;
+    background:linear-gradient(180deg, #ffd24a 0%, #ff7a00 70%, #ff4d00 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    padding-right:.08em;
+  }
+
+  .track-wrap{
+    position:relative;
+    flex:1 1 auto;
+    min-height:170px;
+    width:100%;
+    z-index:2;
+  }
+  .track{
+    position:absolute;
+    inset:0;
+    width:100%; height:100%;
+    overflow:visible;
+  }
+  .track text{ font-family:var(--sans); }
+  #carG{ transition:opacity .35s ease; }
+
+  .banner-flash{ animation:bannerFlash .9s ease; }
+  @keyframes bannerFlash{
+    0%,100%{ filter:none; }
+    30%{ filter:brightness(1.8) drop-shadow(0 0 6px #fff); }
+  }
+
+  /* Panel de control: material translúcido */
+  .race-ui{
+    position:relative;
+    z-index:4;
+    width:min(100%, 440px);
+    padding:16px 16px 10px;
+    border-radius:28px;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(26px) saturate(170%);
+    backdrop-filter:blur(26px) saturate(170%);
+    border:1px solid var(--glass-edge);
+    box-shadow:
+      0 24px 60px -16px rgba(0,0,20,.7),
+      inset 0 1px 0 rgba(255,255,255,.18);
+  }
+
+  .dash{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+    padding:0 4px;
+  }
+  .speedo{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    font-weight:900;
+    font-style:italic;
+    letter-spacing:-.03em;
+  }
+  .speedo span{
+    font-size:2.1rem;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+    min-width:3ch;
+  }
+  .speedo small{
+    font-size:.78rem;
+    font-weight:700;
+    font-style:normal;
+    letter-spacing:.06em;
+    color:var(--ink-2);
+    text-transform:uppercase;
+  }
+
+  .swatches{ display:flex; gap:10px; }
+  .swatch{
+    width:28px; height:28px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    background:var(--c);
+    box-shadow:inset 0 -3px 6px rgba(0,0,0,.35), inset 0 2px 3px rgba(255,255,255,.4), 0 0 0 1px rgba(255,255,255,.18);
+    transition:transform .12s ease-out, box-shadow .2s ease;
+  }
+  .swatch:active{ transform:scale(.88); }
+  .swatch[aria-checked="true"]{
+    box-shadow:inset 0 -3px 6px rgba(0,0,0,.35), inset 0 2px 3px rgba(255,255,255,.4), 0 0 0 2px #06123a, 0 0 0 4px #fff;
+  }
+
+  /* Botón de mantener presionado */
+  .hold{
+    position:relative;
+    display:block;
+    width:100%;
+    min-height:58px;
+    border:none;
+    border-radius:18px;
+    overflow:hidden;
+    cursor:pointer;
+    font-size:1.05rem;
+    font-weight:800;
+    letter-spacing:-.012em;
+    color:#fff;
+    background:rgba(255,255,255,.09);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+    transition:transform .12s ease-out, opacity .2s ease;
+  }
+  .hold.pressed{ transform:scale(.97); }
+  .hold.busy{ opacity:.62; cursor:default; }
+  .hold.ready{ animation:readyGlow 2.2s ease-in-out infinite; }
+  @keyframes readyGlow{
+    0%,100%{ box-shadow:inset 0 0 0 1px rgba(255,255,255,.14), 0 0 0 0 rgba(255,122,0,0); }
+    50%    { box-shadow:inset 0 0 0 1px rgba(255,170,80,.6), 0 0 26px 0 rgba(255,122,0,.45); }
+  }
+  .hold-fill{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(90deg, #ffb000 0%, #ff7a00 50%, #ff2d2d 100%);
+    transform-origin:0 50%;
+    transform:scaleX(0);
+  }
+  .hold-fill.settle{ transition:transform .45s cubic-bezier(.2,.8,.2,1); }
+  .hold-mark{
+    position:absolute;
+    top:10px; bottom:10px;
+    left:68%;
+    width:2px;
+    border-radius:2px;
+    background:rgba(255,255,255,.4);
+  }
+  .hold-label{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:0 14px;
+    text-shadow:0 1px 2px rgba(0,0,0,.35);
+    pointer-events:none;
+  }
+  .hold-label svg{ width:20px; height:20px; flex:none; }
+
+  .skip{
+    display:block;
+    margin:6px auto 0;
+    padding:8px 12px;
+    border:none;
+    background:none;
+    font-size:.86rem;
+    font-weight:600;
+    color:var(--ink-2);
+    cursor:pointer;
+    border-radius:10px;
+    transition:color .2s ease, transform .12s ease-out;
+  }
+  .skip:hover{ color:#fff; }
+  .skip:active{ transform:scale(.95); }
+
+  /* Botón de sonido */
+  .mute{
+    position:fixed;
+    top:calc(env(safe-area-inset-top) + 14px);
+    right:14px;
+    width:40px; height:40px;
+    display:grid; place-items:center;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:50%;
+    background:rgba(10,22,72,.5);
+    -webkit-backdrop-filter:blur(18px);
+    backdrop-filter:blur(18px);
+    cursor:pointer;
+    z-index:45;
+    transition:transform .12s ease-out;
+  }
+  .mute:active{ transform:scale(.9); }
+  .mute svg{ width:19px; height:19px; }
+
+  /* Destello para pasar de escena */
+  .veil{
+    position:fixed; inset:0;
+    background:radial-gradient(circle at 72% 58%, #ffffff 0%, #cfdcff 35%, #2a5cff 100%);
+    opacity:0;
+    pointer-events:none;
+    z-index:30;
+  }
+
+  /* ============================================================
+     BOTONES
+     ============================================================ */
+  .controls{
+    position:relative;
+    z-index:3;
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    justify-content:center;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:50px;
+    padding:0 24px;
+    font-size:1.0625rem;
+    font-weight:700;
+    letter-spacing:-.012em;
+    border:none;
+    border-radius:999px;
+    cursor:pointer;
+    touch-action:manipulation;
+    transition:transform .14s ease-out, filter .2s ease, background .2s ease;
+  }
+  .btn svg{ width:20px; height:20px; flex:none; }
+  .btn:active{ transform:scale(.96); }
+  .btn-primary{
+    color:#241000;
+    background:linear-gradient(180deg, #ffb13d 0%, #ff7a00 100%);
+    box-shadow:
+      0 0 28px rgba(255,122,0,.35),
+      0 8px 20px -6px rgba(255,90,0,.7),
+      inset 0 1px 0 rgba(255,255,255,.55),
+      inset 0 -1px 0 rgba(120,40,0,.3);
+  }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .btn-glass{
+    color:var(--ink);
+    background:rgba(255,255,255,.1);
+    -webkit-backdrop-filter:blur(22px) saturate(170%);
+    backdrop-filter:blur(22px) saturate(170%);
+    border:1px solid rgba(255,255,255,.2);
+    box-shadow:0 8px 20px -10px rgba(0,0,20,.6);
+  }
+  .btn-glass:hover{ background:rgba(255,255,255,.17); }
+
+  /* ============================================================
+     ESCENA 2: EL EMPAQUE DE COLECCIÓN
+     ============================================================ */
+  .gift-scene{
+    justify-content:center;
+    justify-content:safe center;
+    gap:18px;
+    padding:calc(env(safe-area-inset-top) + 26px) 16px calc(env(safe-area-inset-bottom) + 26px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    background:radial-gradient(110% 80% at 50% 42%, #2253ea 0%, #0d2c9e 36%, #06164f 70%, #030a26 100%);
+    will-change:transform;
+  }
+  .rays-wrap{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+    z-index:0;
+  }
+  .rays{
+    position:absolute;
+    left:50%; top:48%;
+    width:220vmax; height:220vmax;
+    margin:-110vmax 0 0 -110vmax;
+    background:repeating-conic-gradient(from 0deg, rgba(255,170,60,.12) 0deg 5deg, transparent 5deg 15deg);
+    -webkit-mask-image:radial-gradient(circle, #000 0%, transparent 40%);
+    mask-image:radial-gradient(circle, #000 0%, transparent 40%);
+    animation:spin 90s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .gift-head{ position:relative; z-index:3; text-align:center; }
+  .gift-head h1{ font-size:clamp(2rem, 8.4vw, 3rem); }
+  .gift-head h1 em{
+    background:linear-gradient(180deg, #ffe066 0%, #ff8a00 75%, #ff5a00 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    padding-right:.08em;
+  }
+
+  .pack-stage{
+    position:relative;
+    z-index:2;
+    perspective:1000px;
+    touch-action:none;
+    padding:6px;
+    cursor:pointer;
+  }
+  .pack{
+    position:relative;
+    width:max(210px, min(74vw, 310px, calc((100dvh - 300px) * .714)));
+    aspect-ratio:5 / 7;
+    container-type:inline-size;
+    transform-style:preserve-3d;
+    will-change:transform;
+    filter:drop-shadow(0 30px 34px rgba(0,0,20,.6)) drop-shadow(0 0 30px rgba(255,122,0,.28));
+  }
+  .pack-face{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:11cqw 6.5cqw 7cqw;
+    border-radius:6cqw;
+    background:linear-gradient(165deg, #3470ff 0%, #1646dc 42%, #0a2690 100%);
+    box-shadow:
+      inset 0 0 0 1.1cqw rgba(255,255,255,.95),
+      inset 0 0 0 2.2cqw #ff7a00,
+      inset 0 0 6cqw rgba(0,0,40,.45);
+    transform-style:preserve-3d;
+  }
+  .pack-hole{
+    position:absolute;
+    top:3.4cqw; left:50%;
+    width:17cqw; height:4.6cqw;
+    transform:translateX(-50%);
+    border-radius:3cqw;
+    background:#06154f;
+    box-shadow:inset 0 .7cqw 1.2cqw rgba(0,0,0,.65), 0 .3cqw 0 rgba(255,255,255,.35);
+  }
+  .pack-flames{
+    position:absolute;
+    left:2.2cqw; right:2.2cqw;
+    top:30cqw;
+    height:56cqw;
+    width:auto;
+    pointer-events:none;
+    -webkit-mask-image:linear-gradient(to bottom, #000 62%, transparent 96%);
+    mask-image:linear-gradient(to bottom, #000 62%, transparent 96%);
+  }
+  .pack-top{
+    position:relative;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:3cqw;
+  }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:1.4cqw;
+    padding:1.5cqw 3.6cqw;
+    border-radius:1.8cqw;
+    background:linear-gradient(90deg, #ff2d2d 0%, #ff7a00 100%);
+    box-shadow:0 .9cqw 0 #8a1600, inset 0 .4cqw 0 rgba(255,255,255,.35);
+    transform:skewX(-12deg);
+    color:#fff;
+    font-size:4.3cqw;
+    font-weight:900;
+    font-style:italic;
+    letter-spacing:.01em;
+    white-space:nowrap;
+    text-shadow:0 .3cqw 0 rgba(120,20,0,.6);
+  }
+  .badge svg{ width:4.8cqw; height:4.8cqw; flex:none; }
+  .serie{
+    text-align:right;
+    font-size:2.9cqw;
+    font-weight:800;
+    line-height:1.25;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#cfe0ff;
+  }
+
+  .bubble-wrap{
+    position:relative;
+    flex:1 1 auto;
+    width:100%;
+    min-height:40cqw;
+    margin-top:4.5cqw;
+    transform-style:preserve-3d;
+  }
+  .bubble-bg{
+    position:absolute;
+    inset:0;
+    border-radius:7cqw;
+    background:
+      radial-gradient(60% 55% at 50% 62%, rgba(255,214,90,.55), rgba(255,122,0,.12) 60%, transparent 75%),
+      repeating-linear-gradient(100deg, rgba(255,255,255,.07) 0 1.2cqw, transparent 1.2cqw 4.4cqw),
+      rgba(4,16,70,.35);
+  }
+  .pack-car{
+    position:absolute;
+    left:3cqw; right:3cqw;
+    top:50%;
+    width:auto;
+    height:auto;
+    margin-top:-19cqw;
+    transform:translateZ(28px);
+    overflow:visible;
+    filter:drop-shadow(0 2.4cqw 1.6cqw rgba(0,0,30,.5));
+  }
+  .bubble{
+    position:absolute;
+    inset:-1.2cqw;
+    border-radius:8cqw;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.46) 0%, rgba(255,255,255,.08) 26%, rgba(255,255,255,.02) 58%, rgba(255,255,255,.22) 100%);
+    border:.55cqw solid rgba(255,255,255,.6);
+    box-shadow:inset 0 0 3.4cqw rgba(255,255,255,.35), 0 2cqw 4cqw rgba(0,0,30,.3);
+    transform:translateZ(40px);
+  }
+  .bubble::after{
+    content:"";
+    position:absolute;
+    left:8cqw; top:3cqw;
+    width:30cqw; height:4cqw;
+    border-radius:4cqw;
+    background:linear-gradient(90deg, rgba(255,255,255,.75), rgba(255,255,255,0));
+    transform:rotate(-8deg);
+  }
+
+  .pack-info{ position:relative; width:100%; margin-top:4.5cqw; }
+  .model-label{
+    font-size:2.8cqw;
+    font-weight:800;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:#a9c2ff;
+  }
+  .model{
+    margin-top:.6cqw;
+    font-size:7.6cqw;
+    font-weight:900;
+    font-style:italic;
+    line-height:1;
+    letter-spacing:-.03em;
+    color:#fff;
+    text-shadow:0 .6cqw 0 #ff5a00;
+  }
+  .color-line{
+    margin-top:1.8cqw;
+    font-size:3cqw;
+    font-weight:600;
+    color:#cfe0ff;
+  }
+  .stats{
+    list-style:none;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:2.6cqw 5cqw;
+    margin-top:3.6cqw;
+  }
+  .stats li{ font-size:2.8cqw; font-weight:700; color:#e4ecff; }
+  .stats .row{ display:flex; justify-content:space-between; gap:2cqw; white-space:nowrap; }
+  .stats b{ font-weight:900; color:#ffd24a; }
+  .bar{
+    height:1.6cqw;
+    margin-top:1cqw;
+    border-radius:1cqw;
+    background:rgba(255,255,255,.18);
+    overflow:hidden;
+  }
+  .bar i{
+    display:block;
+    height:100%;
+    width:var(--p);
+    border-radius:inherit;
+    background:linear-gradient(90deg, #ffd400, #ff7a00);
+    transform-origin:0 50%;
+  }
+  .gift-scene.active .bar i{ animation:fillBar 1.3s .9s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes fillBar{ from{ transform:scaleX(0); } }
+
+  .sheen{
+    position:absolute;
+    inset:0;
+    border-radius:6cqw;
+    pointer-events:none;
+    background:linear-gradient(115deg,
+      transparent 22%,
+      rgba(255,255,255,.26) 38%,
+      rgba(140,220,255,.18) 44%,
+      rgba(255,150,230,.14) 50%,
+      transparent 62%);
+    background-size:260% 100%;
+    background-position:50% 0;
+    mix-blend-mode:screen;
+    transform:translateZ(46px);
+  }
+
+  /* llegada de la escena */
+  .gift-scene.active .gift-head,
+  .gift-scene.active .controls{ animation:arrive 1s cubic-bezier(.2,.8,.2,1) both; }
+  .gift-scene.active .controls{ animation-delay:.3s; }
+  @keyframes arrive{
+    from{ opacity:0; transform:translateY(20px) scale(.97); filter:blur(8px); }
+    to  { opacity:1; transform:none; filter:blur(0); }
+  }
+
+  /* ============================================================
+     HOJA DE LA CARTA
+     ============================================================ */
+  .scrim{
+    position:fixed; inset:0;
+    background:rgba(2,6,30,.6);
+    -webkit-backdrop-filter:blur(5px);
+    backdrop-filter:blur(5px);
+    opacity:0;
+    visibility:hidden;
+    z-index:40;
+  }
+  .scrim.open{ visibility:visible; }
+
+  .sheet{
+    position:fixed;
+    left:50%;
+    bottom:calc(env(safe-area-inset-bottom) + 10px);
+    width:min(calc(100% - 16px), 470px);
+    max-height:calc(100dvh - 48px);
+    display:flex;
+    flex-direction:column;
+    transform:translate3d(-50%, 120%, 0);
+    border-radius:34px;
+    background:linear-gradient(180deg, rgba(24,44,130,.9), rgba(10,22,72,.94));
+    -webkit-backdrop-filter:blur(34px) saturate(170%);
+    backdrop-filter:blur(34px) saturate(170%);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:
+      0 40px 90px -16px rgba(0,0,20,.8),
+      inset 0 1px 0 rgba(255,255,255,.22);
+    color:var(--ink);
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .2s ease, visibility 0s linear .2s;
+    z-index:41;
+  }
+  .sheet:focus{ outline:none; }
+  .sheet.open{ opacity:1; visibility:visible; transition:opacity .2s ease, visibility 0s; }
+
+  .sheet-grab{
+    position:relative;
+    flex:none;
+    height:34px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .sheet-grab:active{ cursor:grabbing; }
+  .grabber{
+    position:absolute;
+    left:50%; top:10px;
+    width:38px; height:5px;
+    transform:translateX(-50%);
+    border-radius:999px;
+    background:rgba(255,255,255,.3);
+  }
+  .sheet-close{
+    position:absolute;
+    top:10px; right:14px;
+    width:32px; height:32px;
+    display:grid; place-items:center;
+    border:none;
+    border-radius:50%;
+    background:rgba(255,255,255,.12);
+    color:rgba(255,255,255,.75);
+    cursor:pointer;
+    transition:transform .14s ease-out, background .2s ease;
+  }
+  .sheet-close:hover{ background:rgba(255,255,255,.2); }
+  .sheet-close:active{ transform:scale(.9); }
+  .sheet-close svg{ width:14px; height:14px; }
+
+  .sheet-body{
+    overflow-y:auto;
+    padding:2px 28px 30px;
+    text-align:center;
+    overscroll-behavior:contain;
+  }
+  .sheet-body h2{
+    font-size:clamp(1.6rem, 6.4vw, 2rem);
+    font-weight:900;
+    font-style:italic;
+    line-height:1.05;
+    letter-spacing:-.03em;
+    text-wrap:balance;
+  }
+  .card-emojis{ margin-top:8px; font-size:1.05rem; letter-spacing:.3em; }
+  .card-message{
+    margin:18px -8px 8px;
+    padding:10px 12px;
+    min-height:90px;
+    font-size:clamp(1.08rem, 4.4vw, 1.22rem);
+    font-weight:500;
+    line-height:1.5;
+    letter-spacing:-.01em;
+    color:#eef3ff;
+    text-wrap:pretty;
+    border-radius:16px;
+    outline:none;
+    transition:background .25s ease, box-shadow .25s ease;
+  }
+  .card-message:focus{
+    background:rgba(255,255,255,.07);
+    box-shadow:0 0 0 2px rgba(255,160,60,.6);
+  }
+  .card-footer{
+    margin-top:12px;
+    font-size:1rem;
+    font-weight:800;
+    font-style:italic;
+    letter-spacing:-.01em;
+    color:#ffb45c;
+  }
+
+  /* ============================================================
+     AVISO (toast)
+     ============================================================ */
+  .toast{
+    position:fixed;
+    left:50%;
+    top:calc(env(safe-area-inset-top) + 14px);
+    max-width:calc(100% - 84px);
+    padding:12px 20px;
+    text-align:center;
+    font-size:.95rem;
+    font-weight:700;
+    letter-spacing:-.011em;
+    color:var(--ink);
+    background:rgba(12,26,86,.8);
+    -webkit-backdrop-filter:blur(24px) saturate(170%);
+    backdrop-filter:blur(24px) saturate(170%);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;
+    box-shadow:0 14px 34px -10px rgba(0,0,20,.7);
+    transform:translate(-50%, -160%);
+    opacity:0;
+    pointer-events:none;
+    transition:transform .6s cubic-bezier(.2,.9,.25,1.15), opacity .3s ease;
+    z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  /* ============================================================
+     ACCESIBILIDAD
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce){
+    .floor, .rays, .hold.ready{ animation:none !important; }
+    .gift-scene.active .gift-head,
+    .gift-scene.active .controls{ animation:fadeOnly .5s ease both !important; }
+    .toast{ transition:opacity .3s ease; transform:translate(-50%, 0); }
+  }
+  @keyframes fadeOnly{ from{ opacity:0; } to{ opacity:1; } }
+
+  @media (prefers-reduced-transparency: reduce){
+    .race-ui, .sheet, .toast, .btn-glass, .mute{
+      -webkit-backdrop-filter:none; backdrop-filter:none;
+      background:#0c1a5a;
+    }
+    .scrim{ -webkit-backdrop-filter:none; backdrop-filter:none; }
+  }
+  @media (prefers-contrast: more){
+    .race-ui, .sheet, .toast, .btn-glass{ background:#081446; border-color:rgba(255,255,255,.6); }
+    .skip, .speedo small{ color:#fff; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     DEFINICIONES COMPARTIDAS: el auto se dibuja una sola vez y se usa
+     en la pista y en el empaque (así el color elegido viaja con él)
+     ============================================================ -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <linearGradient id="paint" x1="0" y1="0" x2="0" y2="1">
+      <stop id="paint0" offset="0%"   stop-color="#ff6a5a"/>
+      <stop id="paint1" offset="45%"  stop-color="#e3131b"/>
+      <stop id="paint2" offset="100%" stop-color="#6e0007"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#9fd0ff"/>
+      <stop offset="35%"  stop-color="#1b2a4a"/>
+      <stop offset="100%" stop-color="#05080f"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="45%"  stop-color="#9aa2b2"/>
+      <stop offset="55%"  stop-color="#e8ecf4"/>
+      <stop offset="100%" stop-color="#5a6070"/>
+    </linearGradient>
+    <linearGradient id="flameDecal" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%"   stop-color="#ffe14d"/>
+      <stop offset="45%"  stop-color="#ff8a00"/>
+      <stop offset="100%" stop-color="#ff2d00"/>
+    </linearGradient>
+    <linearGradient id="flameExhaust" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#ff5a00" stop-opacity="0"/>
+      <stop offset="55%"  stop-color="#ff8a00"/>
+      <stop offset="100%" stop-color="#fff2a0"/>
+    </linearGradient>
+    <linearGradient id="packFlame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffe14d"/>
+      <stop offset="40%"  stop-color="#ff8a00"/>
+      <stop offset="100%" stop-color="#ff2d00"/>
+    </linearGradient>
+    <linearGradient id="launcherGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4b82ff"/>
+      <stop offset="100%" stop-color="#0c2a9e"/>
+    </linearGradient>
+    <linearGradient id="pole" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#8d95a8"/>
+      <stop offset="50%"  stop-color="#f2f5fb"/>
+      <stop offset="100%" stop-color="#6b7284"/>
+    </linearGradient>
+    <pattern id="checker" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#fff"/>
+      <rect width="4" height="4" fill="#111"/>
+      <rect x="4" y="4" width="4" height="4" fill="#111"/>
+    </pattern>
+    <filter id="trackGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+
+    <!-- rueda con banda roja -->
+    <g id="wheel">
+      <circle r="10.5" fill="#0d0d10"/>
+      <circle r="10.5" fill="none" stroke="#2c2c34" stroke-width="1.2"/>
+      <circle r="8.7" fill="none" stroke="#e5141b" stroke-width="1"/>
+      <circle r="6.6" fill="url(#chrome)"/>
+      <g id="spokes" stroke="#7d8394" stroke-width="1.7" stroke-linecap="round">
+        <line x1="0" y1="-5.8" x2="0" y2="5.8"/>
+        <line x1="0" y1="-5.8" x2="0" y2="5.8" transform="rotate(60)"/>
+        <line x1="0" y1="-5.8" x2="0" y2="5.8" transform="rotate(120)"/>
+      </g>
+      <circle r="1.8" fill="#4a4f5a"/>
+    </g>
+
+    <!-- el auto: mira a la derecha, ruedas apoyadas en y = 0 -->
+    <g id="car">
+      <g id="speedLines" stroke="#ffffff" stroke-linecap="round" opacity="0">
+        <line id="sl1" x1="-47" y1="-9"  x2="-47" y2="-9"  stroke-width="1.6"/>
+        <line id="sl2" x1="-47" y1="-18" x2="-47" y2="-18" stroke-width="1.3"/>
+        <line id="sl3" x1="-40" y1="-27" x2="-40" y2="-27" stroke-width="1"/>
+      </g>
+      <g id="exhaust" transform="translate(-45 -12) scale(0)">
+        <path d="M0 0 C -8 -5 -18 -3 -28 0 C -18 3 -8 5 0 0 Z" fill="url(#flameExhaust)"/>
+        <path d="M0 0 C -5 -2.4 -11 -1.5 -16 0 C -11 1.5 -5 2.4 0 0 Z" fill="#fff6c2"/>
+      </g>
+      <ellipse cx="0" cy="1.2" rx="40" ry="2.6" fill="#000" opacity=".35"/>
+      <!-- alerón -->
+      <path d="M -37 -21 L -41 -29 L -33 -29 L -31 -22 Z" fill="url(#paint)"/>
+      <rect x="-45" y="-31.5" width="16" height="3" rx="1.2" fill="#15151a"/>
+      <!-- carrocería -->
+      <path d="M -41 -12 L -42 -20 C -40 -22 -34 -22.5 -30 -22.5 C -23 -23 -18 -32 -8 -33 L 7 -33 C 13 -33 17 -27 23 -24 L 38 -21 C 42 -20 44 -16 43 -12 L 34.5 -11 A 10.5 10.5 0 0 0 13.5 -11 L -13 -11 A 11.5 11.5 0 0 0 -36 -11 Z" fill="url(#paint)"/>
+      <path d="M -13 -11 L 13.5 -11 L 13 -14 L -12.5 -14 Z" fill="#000" opacity=".28"/>
+      <!-- ventanas -->
+      <path d="M -19 -24 C -14 -26 -11.5 -31 -6.5 -31.2 L 6 -31.2 C 10.5 -31.2 14 -27.5 18.5 -24.5 Z" fill="url(#glass)"/>
+      <path d="M 0 -31.2 L 0 -24.3" stroke="url(#paint)" stroke-width="1.8"/>
+      <!-- llamas -->
+      <path d="M 41.5 -18.5 C 33 -21.5 28 -15.5 21 -19 C 15 -22 10 -14.5 3 -18 C -3 -21 -6 -14.5 -13 -17 C -8 -12.5 -1 -13.5 5 -13 L 41 -13.5 Z" fill="url(#flameDecal)"/>
+      <!-- brillo -->
+      <path d="M -30 -21.8 C -22 -22.3 -18 -31 -8 -32 L 7 -32 C 12 -32 16 -27 22 -23.5 L 37 -20.3" fill="none" stroke="#fff" stroke-width="1" opacity=".5" stroke-linecap="round"/>
+      <!-- motor expuesto -->
+      <rect x="14.5" y="-29" width="10.5" height="5.5" rx="1.3" fill="url(#chrome)"/>
+      <rect x="16.5" y="-32.5" width="6.5" height="3.8" rx="1" fill="#17171c"/>
+      <!-- luces y escape -->
+      <ellipse cx="42" cy="-16.5" rx="1.6" ry="1.9" fill="#fff6c2"/>
+      <rect x="-42.6" y="-19.6" width="2.4" height="3.6" rx="1" fill="#ff2a2a"/>
+      <rect x="-45.5" y="-13.6" width="5.5" height="2.6" rx="1.2" fill="url(#chrome)"/>
+      <!-- ruedas -->
+      <use href="#wheel" transform="translate(-24.5 -10.5)"/>
+      <use href="#wheel" transform="translate(24 -9.45) scale(.9)"/>
+    </g>
+  </defs>
+</svg>
+
+<canvas id="fx"></canvas>
+
+<button class="mute" id="btnMute" aria-label="Silenciar" aria-pressed="false"></button>
+
+<!-- ============================================================
+     ESCENA 1: LA PISTA
+     ============================================================ -->
+<section class="scene race-scene active" id="raceScene">
+  <div class="spot a"></div>
+  <div class="spot b"></div>
+  <div class="floor"></div>
+
+  <header class="race-head">
+    <!-- ✏️ Textos de la primera pantalla -->
+    <p class="eyebrow">Para ti mi amor💙</p>
+    <h1 class="race-title">Tu regalo está<br><em>al final de la pista</em></h1>
+  </header>
+
+  <div class="track-wrap" id="trackWrap">
+    <svg class="track" id="track" viewBox="0 196 400 296" role="img" aria-label="Pista naranja con un loop, un lanzador turbo y la meta">
+      <g id="trackG"></g>
+      <g id="carG"><use href="#car"/></g>
+    </svg>
+  </div>
+
+  <div class="race-ui" id="raceUI">
+    <div class="dash">
+      <div class="speedo" aria-live="off"><span id="speedNum">000</span><small>km/h</small></div>
+      <div class="swatches" role="radiogroup" aria-label="Color del auto">
+        <button class="swatch" role="radio" aria-checked="true"  aria-label="Rojo fuego"     data-paint="rojo"  style="--c:#e3131b"></button>
+        <button class="swatch" role="radio" aria-checked="false" aria-label="Azul eléctrico" data-paint="azul"  style="--c:#1f5bff"></button>
+        <button class="swatch" role="radio" aria-checked="false" aria-label="Negro mate"     data-paint="negro" style="--c:#2a2a33"></button>
+        <button class="swatch" role="radio" aria-checked="false" aria-label="Verde lima"     data-paint="lima"  style="--c:#5fd62a"></button>
+      </div>
+    </div>
+
+    <button class="hold ready" id="btnHold">
+      <span class="hold-fill" id="holdFill"></span>
+      <span class="hold-mark" aria-hidden="true"></span>
+      <span class="hold-label">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14a7 7 0 1 1 14 0"/><path d="M10 14l3.5-4.5"/></svg>
+        <span id="holdLabel">Mantén presionado para acelerar</span>
+      </span>
+    </button>
+    <button class="skip" id="btnSkip">Saltar la carrera</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     ESCENA 2: EL PREMIO DE COLECCIÓN
+     ============================================================ -->
+<section class="scene gift-scene" id="giftScene">
+  <div class="rays-wrap"><div class="rays"></div></div>
+
+  <header class="gift-head">
+    <p class="eyebrow">¡Llegaste a la meta!</p>
+    <h1 class="race-title">Tu premio es<br><em>de colección</em></h1>
+  </header>
+
+  <div class="pack-stage" id="packStage" role="button" tabindex="0" aria-label="Empaque de colección. Toca para abrirlo">
+    <div class="pack" id="pack">
+      <div class="pack-face">
+        <span class="pack-hole"></span>
+
+        <svg class="pack-flames" viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 60 L0 36 C 8 42 14 41 18 31 C 20 39 24 43 30 41 C 30 29 38 21 46 18 C 42 28 46 36 54 36 C 56 26 64 18 74 15 C 70 26 72 34 80 34 C 84 24 92 20 100 19 L100 60 Z" fill="url(#packFlame)" opacity=".95"/>
+        </svg>
+
+        <div class="pack-top">
+          <span class="badge">
+            <svg viewBox="0 0 20 20" fill="#ffe14d" aria-hidden="true"><path d="M10 1c1 3.4 4.8 5.3 4.8 10.2A4.8 4.8 0 0 1 10 16a4.8 4.8 0 0 1-4.8-4.8c0-2.1 1-3.5 2.2-4.6-.1 1.8.7 3 1.8 3.4C9 7 8.6 4 10 1Z"/></svg>
+            EDICIÓN 1/1
+          </span>
+          <span class="serie">Serie amor<br>Nº 001/001</span>
+        </div>
+
+        <div class="bubble-wrap">
+          <div class="bubble-bg"></div>
+          <svg class="pack-car" id="packCar" viewBox="-50 -38 100 42" aria-hidden="true"><use href="#car"/></svg>
+          <div class="bubble" id="bubble"></div>
+        </div>
+
+        <div class="pack-info">
+          <!-- ✏️ Nombre del modelo y estadísticas -->
+          <div class="model-label">Modelo</div>
+          <div class="model" id="packModel">Mi Amor GT</div>
+          <div class="color-line">Color: <span id="packColor">Rojo fuego</span> · Hecho a mano</div>
+          <ul class="stats">
+            <li><div class="row"><span>Velocidad</span><b>100</b></div><div class="bar"><i style="--p:100%"></i></div></li>
+            <li><div class="row"><span>Estilo</span><b>100</b></div><div class="bar"><i style="--p:100%"></i></div></li>
+            <li><div class="row"><span>Paciencia conmigo</span><b>99</b></div><div class="bar"><i style="--p:99%"></i></div></li>
+            <li><div class="row"><span>Amor</span><b>∞</b></div><div class="bar"><i style="--p:100%"></i></div></li>
+          </ul>
+        </div>
+      </div>
+      <div class="sheen" id="sheen"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btnOpen">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h14v9H3zM2 5h16v3H2zM10 5v12M10 5C8 1.5 4.5 2.5 6 5M10 5c2-3.5 5.5-2.5 4 0"/></svg>
+      <span id="btnOpenLabel">Abrir empaque</span>
+    </button>
+    <button class="btn btn-glass" id="btnCard">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M3.5 6l6.5 5 6.5-5"/></svg>
+      Ver carta
+    </button>
+  </div>
+</section>
+
+<div class="veil" id="veil"></div>
+
+<!-- ============================================================
+     CARTA (hoja inferior)  ✏️ edita aquí el mensaje
+     ============================================================ -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+  <div class="sheet-grab" id="sheetGrab">
+    <span class="grabber"></span>
+    <button class="sheet-close" id="btnCloseCard" aria-label="Cerrar">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <h2 id="cardTitle">Para mi amorcito</h2>
+    <div class="card-emojis" aria-hidden="true">🏁 🏎️ 💙</div>
+    <div class="card-message" contenteditable="true" id="editableMessage"> Hola mi corazón hermoso, sabes que ni la distancia dejará que me olvide de éstos días especiales jiji. Nunca olvides lo mucho que te admiro, por ser ese gran hombre, tan fuerte, tan valiente, tan hermoso y todo todo lo monito que hay en este mundo. Espero de todo corazón que nunca nos ganen las peleas, la desconfianza ni todos esos problemas que a veces se nos atraviesan. Sabes que aunque me enoje contigo te amo con todo mi alma y mi corazón. Changuito y yo te esperaremos juntos hasta el día que podamos reencontrarnos. Espero seguir sintiéndome amada por ti y yo poder seguir amándote por la eternidad. Adiós corazón, te amo con toda mi alma.</div>
+    <div class="card-footer">Con amor, Regina 🫶🏼</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = arr => arr[(Math.random() * arr.length) | 0];
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const buzz = p => { try { if (navigator.vibrate) navigator.vibrate(p); } catch (_) {} };
+
+  /* Proyección de inercia (la misma función que usa Apple para el scroll) */
+  const project = (velocity, rate = 0.998) => (velocity / 1000) * rate / (1 - rate);
+  /* Resistencia progresiva al pasarse de un borde */
+  const rubberband = (over, dim, c = 0.55) => (over * dim * c) / (dim + c * Math.abs(over));
+
+  /* Resorte con estado: se puede re-apuntar en cualquier momento y conserva su velocidad */
+  class Spring{
+    constructor(value, { response = .4, damping = 1 } = {}){
+      this.x = value; this.v = 0; this.target = value;
+      this.config(response, damping);
+    }
+    config(response, damping){
+      this.k = Math.pow((2 * Math.PI) / response, 2);
+      this.c = 2 * damping * Math.sqrt(this.k);
+      return this;
+    }
+    step(dt){
+      const n = Math.max(1, Math.ceil(dt * 240)), h = dt / n;
+      for (let i = 0; i < n; i++){
+        this.v += (this.k * (this.target - this.x) - this.c * this.v) * h;
+        this.x += this.v * h;
+      }
+      return this.x;
+    }
+  }
+
+  /* Resorte de un solo uso (para la hoja de la carta) */
+  function spring({ from, to, velocity = 0, response = 0.4, damping = 1, onUpdate, onDone }){
+    const s = new Spring(from, { response, damping });
+    s.target = to; s.v = velocity;
+    let last = performance.now(), raf = 0, alive = true;
+    function step(now){
+      if (!alive) return;
+      const dt = Math.min((now - last) / 1000, 1 / 20);
+      last = now;
+      s.step(dt);
+      if (Math.abs(to - s.x) < 0.4 && Math.abs(s.v) < 8){
+        alive = false; onUpdate(to); if (onDone) onDone(); return;
+      }
+      onUpdate(s.x);
+      raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+    return { cancel(){ alive = false; cancelAnimationFrame(raf); } };
+  }
+
+  /* ============================================================
+     SONIDO: motor sintetizado + pequeños efectos (Web Audio)
+     ============================================================ */
+  const Sound = (() => {
+    let ctx = null, master, o1, o2, filt, gain, muted = false;
+    function init(){
+      if (ctx){ if (ctx.state === 'suspended') ctx.resume(); return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = muted ? 0 : 1; master.connect(ctx.destination);
+      filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 600; filt.Q.value = 3;
+      gain = ctx.createGain(); gain.gain.value = 0;
+      o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 40;
+      o2 = ctx.createOscillator(); o2.type = 'square';   o2.frequency.value = 20;
+      o1.connect(filt); o2.connect(filt); filt.connect(gain); gain.connect(master);
+      o1.start(); o2.start();
+    }
+    function engine(freq, vol){
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      o1.frequency.setTargetAtTime(freq, t, .04);
+      o2.frequency.setTargetAtTime(freq * .5, t, .04);
+      filt.frequency.setTargetAtTime(260 + freq * 6, t, .05);
+      gain.gain.setTargetAtTime(vol, t, .06);
+    }
+    function blip(freqs, dur = .12, type = 'sine', vol = .08){
+      if (!ctx) return;
+      freqs.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        const t0 = ctx.currentTime + i * dur * .8;
+        o.type = type; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + .01);
+        g.gain.exponentialRampToValueAtTime(.0001, t0 + dur * 1.8);
+        o.connect(g); g.connect(master);
+        o.start(t0); o.stop(t0 + dur * 2);
+      });
+    }
+    function setMuted(m){
+      muted = m;
+      if (ctx) master.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, .02);
+    }
+    return { init, engine, blip, setMuted, get muted(){ return muted; }, get on(){ return !!ctx; } };
+  })();
+
+  const btnMute = $('btnMute');
+  const ICON_ON  = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8H3Z" fill="currentColor"/><path d="M13.5 7.2a4 4 0 0 1 0 5.6M15.8 5a7 7 0 0 1 0 10"/></svg>';
+  const ICON_OFF = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8H3Z" fill="currentColor"/><path d="M13.5 8l4 4M17.5 8l-4 4"/></svg>';
+  function paintMute(){
+    btnMute.innerHTML = Sound.muted ? ICON_OFF : ICON_ON;
+    btnMute.setAttribute('aria-pressed', String(Sound.muted));
+    btnMute.setAttribute('aria-label', Sound.muted ? 'Activar sonido' : 'Silenciar');
+  }
+  paintMute();
+  btnMute.addEventListener('click', () => { Sound.init(); Sound.setMuted(!Sound.muted); paintMute(); });
+
+  /* ============================================================
+     PARTÍCULAS: chispas, humo y confeti
+     ============================================================ */
+  const canvas = $('fx');
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+  let W = window.innerWidth, H = window.innerHeight;
+
+  function resizeCanvas(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  const CONFETTI = ['#111111', '#ffffff', '#ff7a00', '#1d5bff', '#ffd400', '#ff2d2d'];
+
+  function addParticle(o){
+    particles.push(Object.assign({
+      kind:'spark', x:0, y:0, vx:0, vy:0, life:1, decay:.02, g:.25, drag:.98,
+      size:3, color:'#ffcc33', rot:rand(0, 6.28), spin:rand(-.2, .2),
+      flip:rand(0, 6.28), flipV:rand(.08, .2)
+    }, o));
+  }
+
+  function sparks(x, y, n, dir = -1){
+    if (reduceMotion) n = Math.ceil(n / 3);
+    for (let i = 0; i < n; i++){
+      addParticle({
+        kind:'spark', x, y,
+        vx:dir * rand(1.5, 7), vy:rand(-5.5, -1),
+        g:.3, decay:rand(.03, .055), size:rand(1.3, 2.4),
+        color:pick(['#ffe27a', '#ffb000', '#ffffff'])
+      });
+    }
+  }
+  function smoke(x, y){
+    addParticle({
+      kind:'smoke', x, y, vx:rand(-1.6, -.5), vy:rand(-1, -.2),
+      g:-.012, drag:.97, decay:rand(.016, .028), size:rand(4, 7)
+    });
+  }
+  function confetti(x, y, n = 90, power = 1, a0 = 0, a1 = Math.PI * 2){
+    if (reduceMotion) n = Math.ceil(n / 3);
+    for (let i = 0; i < n; i++){
+      const a = rand(a0, a1), sp = rand(3, 11) * power;
+      addParticle({
+        kind:'confetti', x, y,
+        vx:Math.cos(a) * sp, vy:Math.sin(a) * sp - 3.5,
+        g:.17, drag:.965, decay:rand(.005, .01), size:rand(6, 11),
+        color:pick(CONFETTI)
+      });
+    }
+  }
+
+  function drawParticles(f){
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+    for (let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.vx *= Math.pow(p.drag, f);
+      p.vy += p.g * f;
+      p.x += p.vx * f;
+      p.y += p.vy * f;
+      p.life -= p.decay * f;
+      p.rot += p.spin * f;
+      p.flip += p.flipV * f;
+
+      if (p.life <= 0 || p.y > H + 60 || p.x < -80 || p.x > W + 80){
+        particles.splice(i, 1);
+        continue;
+      }
+
+      if (p.kind === 'spark'){
+        ctx.globalAlpha = p.life;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.size;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 2.2, p.y - p.vy * 2.2);
+        ctx.stroke();
+      } else if (p.kind === 'smoke'){
+        ctx.globalAlpha = p.life * .32;
+        ctx.fillStyle = '#c9cfdf';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (1 + (1 - p.life) * 2.6), 0, 6.2832);
+        ctx.fill();
+      } else {
+        ctx.globalAlpha = Math.min(1, p.life * 2.5);
+        ctx.fillStyle = p.color;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.scale(1, Math.cos(p.flip));
+        ctx.fillRect(-p.size / 2, -p.size * .32, p.size, p.size * .64);
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ============================================================
+     AVISO
+     ============================================================ */
+  let toastTimer = null;
+  function toast(text){
+    const el = $('toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  /* ============================================================
+     PISTA: recta → loop → recta con la meta
+     ============================================================ */
+  const svg = $('track');
+  const trackG = $('trackG');
+  const carG = $('carG');
+  const spokes = $('spokes');
+  const speedG = $('speedLines');
+  const speedLines = [$('sl1'), $('sl2'), $('sl3')];
+  const exhaust = $('exhaust');
+
+  const Y = 440;          // línea de la pista
+  const CX = 188;         // donde empieza el loop
+  const R = 104;          // radio del loop
+  const D = 72;           // desplazamiento lateral del loop (entrada y salida no chocan)
+  const HALF = 6;         // medio grosor de la pista
+  const CAR_X = 72;       // donde descansa el auto
+  const FIN_X = 356;      // meta
+  const PULL = 22;        // cuánto retrocede el auto al cargar el lanzador
+  const G = 900;          // gravedad (unidades del viewBox / s²)
+  const FRICTION = 42;
+  const KMH = .34;        // conversión a km/h "de juguete"
+
+  const pts = [];
+  for (let x = -420; x < CX; x += 3) pts.push({ x, y:Y });
+  const loopStartIdx = pts.length;
+  const LOOP_N = 420;
+  for (let i = 0; i <= LOOP_N; i++){
+    const t = i / LOOP_N;
+    pts.push({
+      x:CX + R * Math.sin(2 * Math.PI * t) + D * t,
+      y:Y - R + R * Math.cos(2 * Math.PI * t)
+    });
+  }
+  const loopEndIdx = pts.length - 1;
+  for (let x = CX + D + 3; x <= 1500; x += 3) pts.push({ x, y:Y });
+
+  const N = pts.length;
+  const Ls = new Float64Array(N), TX = new Float64Array(N), TY = new Float64Array(N);
+  for (let i = 1; i < N; i++) Ls[i] = Ls[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  for (let i = 0; i < N; i++){
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(N - 1, i + 1)];
+    const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1;
+    TX[i] = dx / l; TY[i] = dy / l;
+  }
+
+  function sample(s){
+    s = clamp(s, 0, Ls[N - 1]);
+    let lo = 0, hi = N - 1;
+    while (hi - lo > 1){ const m = (lo + hi) >> 1; if (Ls[m] <= s) lo = m; else hi = m; }
+    const t = (s - Ls[lo]) / ((Ls[hi] - Ls[lo]) || 1);
+    let tx = lerp(TX[lo], TX[hi], t), ty = lerp(TY[lo], TY[hi], t);
+    const l = Math.hypot(tx, ty) || 1;
+    return { x:lerp(pts[lo].x, pts[hi].x, t), y:lerp(pts[lo].y, pts[hi].y, t), tx:tx / l, ty:ty / l, i:lo };
+  }
+  function sOfX(x, from, to){
+    for (let i = from; i < to; i++){
+      if (pts[i + 1].x >= x){
+        const t = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
+        return lerp(Ls[i], Ls[i + 1], t);
+      }
+    }
+    return Ls[to];
+  }
+
+  const sRest = sOfX(CAR_X, 0, loopStartIdx - 1);
+  const sLoopEnd = Ls[loopEndIdx];
+  const sFinish = sOfX(FIN_X, loopEndIdx, N - 1);
+  const PLUNGER_REST = CAR_X - 46;
+
+  /* ----- dibujo de la pista ----- */
+  function polyD(get){
+    let d = '';
+    for (let i = 0; i < N; i++){
+      const p = get(i);
+      d += (d ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+    }
+    return d;
+  }
+  function buildTrack(){
+    const main = polyD(i => pts[i]);
+    const lip = polyD(i => ({ x:pts[i].x + TY[i] * 3.6, y:pts[i].y - TX[i] * 3.6 }));
+    const groove = polyD(i => ({ x:pts[i].x - TY[i] * 2.2, y:pts[i].y + TX[i] * 2.2 }));
+
+    let connectors = '';
+    for (let s = sOfX(-360, 0, loopStartIdx - 1); s < Ls[N - 1]; s += 96){
+      const p = sample(s);
+      if (p.x > 1400) break;
+      const deg = Math.atan2(p.ty, p.tx) * 57.2958;
+      connectors += `<rect x="-3.5" y="-9.5" width="7" height="19" rx="1.6" transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${deg.toFixed(1)})"/>`;
+    }
+
+    const topY = Y - 2 * R;
+    const midX = CX + D / 2;
+
+    trackG.innerHTML = `
+      <ellipse cx="220" cy="${Y + 22}" rx="330" ry="12" fill="#000" opacity=".35" filter="url(#soft)"/>
+
+      <!-- soporte del loop -->
+      <rect x="${midX - 3}" y="${topY - 8}" width="6" height="${2 * R + 22}" rx="2" fill="#1d5bff" opacity=".85"/>
+      <rect x="${CX - R - 12}" y="${Y + 6}" width="${2 * R + D + 24}" height="8" rx="4" fill="#1d5bff"/>
+      <rect x="${CX - R - 4}" y="${Y + 14}" width="10" height="6" rx="2" fill="#0c2a9e"/>
+      <rect x="${CX + R + D - 6}" y="${Y + 14}" width="10" height="6" rx="2" fill="#0c2a9e"/>
+
+      <!-- meta (detrás del auto) -->
+      <rect x="${FIN_X - 27}" y="${Y - 126}" width="3.6" height="146" fill="url(#pole)"/>
+      <rect x="${FIN_X + 24}" y="${Y - 126}" width="3.6" height="146" fill="url(#pole)"/>
+      <g id="banner">
+        <rect x="${FIN_X - 33}" y="${Y - 132}" width="67" height="26" rx="2.5" fill="url(#checker)" stroke="#fff" stroke-width="1.4"/>
+        <rect x="${FIN_X - 16}" y="${Y - 125.5}" width="33" height="13" rx="3.5" fill="#ff2d2d"/>
+        <text x="${FIN_X + .5}" y="${Y - 115.8}" font-size="9" font-weight="900" font-style="italic" fill="#fff" text-anchor="middle">META</text>
+      </g>
+
+      <!-- pista -->
+      <path d="${main}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="14" transform="translate(0 5)" filter="url(#soft)"/>
+      <path d="${main}" fill="none" stroke="#ff6a00" stroke-width="12" stroke-linejoin="round" filter="url(#trackGlow)"/>
+      <path d="${groove}" fill="none" stroke="#8a2a00" stroke-opacity=".45" stroke-width="1.2"/>
+      <path d="${lip}" fill="none" stroke="#ffb066" stroke-width="2.6" stroke-linecap="round"/>
+      <g fill="#1d5bff" stroke="#8fb0ff" stroke-width=".6">${connectors}</g>
+      <rect x="${midX - 8}" y="${topY - 10}" width="16" height="11" rx="3" fill="#1d5bff" stroke="#8fb0ff" stroke-width=".6"/>
+
+      <!-- lanzador turbo -->
+      <rect id="rod" x="4" y="${Y - HALF - 15}" width="20" height="4" rx="1" fill="url(#chrome)"/>
+      <rect id="plunger" x="${PLUNGER_REST - 5}" y="${Y - HALF - 24}" width="5" height="20" rx="1.6" fill="#ffd400" stroke="#b38f00" stroke-width=".6"/>
+      <path d="M -60 ${Y - HALF} L -60 ${Y - 40} Q -60 ${Y - 46} -54 ${Y - 46} L 10 ${Y - 46} Q 17 ${Y - 46} 18 ${Y - 39} L 19 ${Y - HALF} Z" fill="url(#launcherGrad)" stroke="#8fb0ff" stroke-width=".8"/>
+      <path d="M -50 ${Y - 27} L 2 ${Y - 27} L 8 ${Y - 20} L -44 ${Y - 20} Z" fill="#ff7a00"/>
+      <text x="-18" y="${Y - 31}" font-size="8" font-weight="900" font-style="italic" fill="#fff" text-anchor="middle">TURBO</text>
+      <circle cx="8" cy="${Y - 36}" r="3" fill="#ff2d2d" stroke="#fff" stroke-width=".8"/>
+    `;
+  }
+  buildTrack();
+  const plunger = $('plunger'), rod = $('rod'), banner = $('banner');
+
+  /* ----- estado de la carrera ----- */
+  const raceScene = $('raceScene'), trackWrap = $('trackWrap');
+  const hold = $('btnHold'), holdFill = $('holdFill'), holdLabel = $('holdLabel');
+  const speedNum = $('speedNum');
+
+  let state = 'idle';   // idle | charging | running | falling | towing | respawn | done
+  let s = sRest, v = 0, charge = 0;
+  let cleared = false, passedFinish = false, restT = 0, boostT = 0, shakeT = 0;
+  let wheelA = 0, fall = null, gone = false, chargeStart = 0;
+  let carX = 0, carY = 0, carA = 0, ctm = null;
+  const face = new Spring(PLUNGER_REST, { response:.12, damping:.5 });
+  const tow = new Spring(sRest, { response:.7, damping:1 });
+
+  const rot = (x, y, a) => ({ x:x * Math.cos(a) - y * Math.sin(a), y:x * Math.sin(a) + y * Math.cos(a) });
+  function toScreen(p){
+    if (!ctm) return { x:0, y:0 };
+    return { x:ctm.a * p.x + ctm.c * p.y + ctm.e, y:ctm.b * p.x + ctm.d * p.y + ctm.f };
+  }
+  function carPoint(lx, ly){
+    const r = rot(lx, ly, carA);
+    return toScreen({ x:carX + r.x, y:carY + r.y });
+  }
+
+  function setHold(label, busy){
+    holdLabel.textContent = label;
+    hold.classList.toggle('busy', !!busy);
+    hold.classList.toggle('ready', !busy);
+    hold.setAttribute('aria-disabled', busy ? 'true' : 'false');
+  }
+
+  function startCharge(){
+    if (state !== 'idle' || gone) return;
+    Sound.init();
+    state = 'charging';
+    charge = 0;
+    chargeStart = performance.now();
+    holdFill.classList.remove('settle');
+    hold.classList.add('pressed');
+    hold.classList.remove('ready');
+    holdLabel.textContent = 'Suelta para lanzar';
+  }
+  function cancelCharge(){
+    if (state !== 'charging') return;
+    state = 'idle';
+    charge = 0;
+    s = sRest;
+    hold.classList.remove('pressed');
+    holdFill.classList.add('settle');
+    holdFill.style.transform = 'scaleX(0)';
+    setHold('Mantén presionado para acelerar');
+  }
+  function release(){
+    if (state !== 'charging') return;
+    hold.classList.remove('pressed');
+    if (charge < .06){
+      cancelCharge();
+      toast('Mantén presionado, no solo un toque 😉');
+      return;
+    }
+    v = 260 + 700 * charge;
+    state = 'running';
+    cleared = false; passedFinish = false; restT = 0;
+    boostT = .55;
+    shakeT = reduceMotion ? 0 : .3;
+    face.target = PLUNGER_REST;
+    holdFill.classList.add('settle');
+    holdFill.style.transform = 'scaleX(0)';
+    setHold('¡Vamos! 🏁', true);
+
+    const p = carPoint(-44, -4);
+    sparks(p.x, p.y, 16, -1);
+    Sound.blip([70, 140], .12, 'sawtooth', .07);
+    buzz(18);
+  }
+
+  function fail(){
+    state = 'towing';
+    tow.x = s; tow.v = 0; tow.target = sRest;
+    toast(pick(['Le faltó velocidad 😅 Mantén presionado más tiempo', 'Ni llegó al loop 😅 Carga más el turbo']));
+    setHold('Regresando…', true);
+  }
+
+  function startFall(q){
+    state = 'falling';
+    const a = Math.atan2(q.ty, q.tx);
+    const ox = q.x + q.ty * HALF, oy = q.y - q.tx * HALF;
+    const c = rot(0, -15, a);
+    fall = { x:ox + c.x, y:oy + c.y, vx:q.tx * v, vy:q.ty * v, a, va:-(v / R) * .9, ground:false, t:0, done:false };
+    setHold('Uy…', true);
+  }
+
+  function respawn(){
+    state = 'respawn';
+    carG.style.opacity = 0;
+    setTimeout(() => {
+      fall = null; s = sRest; v = 0;
+      state = 'idle';
+      carG.style.opacity = 1;
+      setHold('Otra vez: mantén presionado');
+    }, 400);
+  }
+
+  function finishFx(){
+    const p = toScreen({ x:FIN_X, y:Y - 118 });
+    confetti(p.x, p.y, 70, .8);
+    banner.classList.remove('banner-flash');
+    void banner.getBBox();
+    banner.classList.add('banner-flash');
+    Sound.blip([523, 659, 784, 1047], .11, 'triangle', .08);
+    buzz([20, 40, 20]);
+  }
+
+  function updateRace(dt, now){
+    ctm = svg.getScreenCTM();
+    let speed = 0;
+
+    if (state === 'charging'){
+      charge = clamp((now - chargeStart) / 1400);   // por tiempo real, no por fotogramas
+      s = sRest - PULL * (1 - Math.pow(1 - charge, 3));
+      wheelA += charge * dt * 1400;
+      if (!reduceMotion && Math.random() < charge * dt * 30){
+        const p = carPoint(-26, 0);
+        smoke(p.x, p.y);
+      }
+      holdFill.style.transform = `scaleX(${charge.toFixed(3)})`;
+      Sound.engine(40 + charge * 140 + Math.sin(now * .05) * 4, .05 + charge * .06);
+      speed = (260 + 700 * charge) * KMH;
+    }
+
+    else if (state === 'running'){
+      const n = Math.max(1, Math.ceil(dt * 240)), h = dt / n;
+      for (let k = 0; k < n; k++){
+        const p = sample(s);
+        let a;
+        if (cleared){
+          a = v < 620 ? 380 : 0;                          // turbo en la recta final
+        } else {
+          a = G * p.ty;
+          const holds = Math.abs(G * p.ty) <= FRICTION;  // la fricción lo sostiene en planos
+          if (v === 0 && holds) a = 0;
+          else a -= FRICTION * Math.sign(v);
+          const nv = v + a * h;
+          if (v !== 0 && Math.sign(nv) !== Math.sign(v) && holds){ v = 0; continue; }
+        }
+        v += a * h;
+        s += v * h;
+
+        // choca suave contra el lanzador si regresa
+        if (s < sRest && v < 0){
+          s = sRest;
+          v = -v * .28;
+          if (v < 30) v = 0;
+          else Sound.blip([110], .06, 'triangle', .08);
+        }
+
+        if (!cleared){
+          const q = sample(s);
+          if (q.i >= loopStartIdx && q.i < loopEndIdx){
+            const ny = -q.tx;                             // normal hacia el centro del loop
+            if (ny > .12 && (v * v) / R < G * ny){ startFall(q); break; }
+          }
+          if (s > sLoopEnd + 4 && v > 0){
+            cleared = true;
+            toast('¡Loop perfecto! 🔥');
+            Sound.blip([784, 1175], .09, 'triangle', .07);
+            buzz(10);
+          }
+        }
+        if (cleared && !passedFinish && s >= sFinish){ passedFinish = true; finishFx(); }
+      }
+
+      if (state === 'running'){
+        wheelA += v * dt / 10.5 * 57.3;
+        if (!cleared && v === 0) restT += dt; else restT = 0;
+        if (restT > .45) fail();
+        if (passedFinish){
+          const p = toScreen({ x:carX - 50, y:carY });
+          if (p.x > W + 30 || s >= Ls[N - 1] - 2) toGift();
+        }
+        Sound.engine(36 + Math.abs(v) * .17, .02 + clamp(Math.abs(v) / 900) * .07);
+        speed = Math.abs(v) * KMH;
+      }
+    }
+
+    else if (state === 'falling'){
+      const f = fall;
+      f.vy += G * dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.a += f.va * dt;
+      const groundC = Y - HALF - 15;
+      // rebota contra el lanzador en vez de atravesarlo
+      if (f.x < CAR_X - 4 && f.vx < 0){ f.x = CAR_X - 4; f.vx = -f.vx * .3; }
+      if (f.y >= groundC){
+        f.y = groundC;
+        if (f.vy > 90){
+          f.vy = -f.vy * .3; f.vx *= .6; f.va *= .45;
+          const p = toScreen({ x:f.x, y:f.y + 14 });
+          sparks(p.x, p.y, 10, f.vx >= 0 ? 1 : -1);
+          Sound.blip([90], .07, 'triangle', .1);
+          buzz(12);
+        } else {
+          f.vy = 0; f.ground = true;
+        }
+      }
+      if (f.ground){
+        f.vx *= Math.exp(-dt * 9);
+        const target = Math.round(f.a / Math.PI) * Math.PI;
+        f.a = lerp(f.a, target, 1 - Math.exp(-dt * 10));
+        f.va = 0;
+        f.t += dt;
+        if (f.t > .8 && !f.done){
+          f.done = true;
+          toast(Math.cos(target) < 0 ? '¡Volcó! 🙃 Otra vez, campeón' : '¡Se cayó del loop! 😂 Dale con más fuerza');
+          respawn();
+        }
+      }
+      wheelA += 400 * dt;
+      Sound.engine(32, .015);
+    }
+
+    else if (state === 'towing'){
+      const prev = s;
+      s = tow.step(dt);
+      wheelA += (s - prev) / 10.5 * 57.3;
+      if (Math.abs(s - sRest) < .3 && Math.abs(tow.v) < 2){
+        s = sRest;
+        state = 'idle';
+        setHold('Otra vez: mantén presionado');
+      }
+      Sound.engine(34, .018);
+    }
+
+    else if (state === 'idle'){
+      Sound.engine(32, .014);
+    }
+
+    if (boostT > 0) boostT = Math.max(0, boostT - dt);
+    if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
+
+    const txt = String(Math.round(speed)).padStart(3, '0');
+    if (speedNum.textContent !== txt) speedNum.textContent = txt;
+  }
+
+  function renderRace(dt){
+    let x, y, a;
+    if (fall && (state === 'falling' || state === 'respawn')){
+      a = fall.a;
+      const c = rot(0, -15, a);
+      x = fall.x - c.x; y = fall.y - c.y;
+    } else {
+      const p = sample(s);
+      a = Math.atan2(p.ty, p.tx);
+      x = p.x + p.ty * HALF;
+      y = p.y - p.tx * HALF;
+    }
+    if (state === 'charging' && !reduceMotion){
+      x += rand(-.5, .5) * charge;
+      y += rand(-.4, .4) * charge;
+    }
+    carX = x; carY = y; carA = a;
+    carG.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${(a * 57.2958).toFixed(2)})`);
+    spokes.setAttribute('transform', `rotate(${(wheelA % 360).toFixed(1)})`);
+
+    // estela de velocidad: codifica la rapidez en el propio dibujo
+    const sp = state === 'running' && v > 0 ? v : 0;
+    const len = clamp((sp - 300) / 6, 0, 60);
+    speedG.setAttribute('opacity', (len / 60 * .75).toFixed(2));
+    speedLines.forEach((l, i) => l.setAttribute('x2', (Number(l.getAttribute('x1')) - len * (1 - i * .22)).toFixed(1)));
+
+    let boost = 0;
+    if (state === 'running') boost = Math.max(boostT / .55, cleared ? .75 : 0);
+    else if (state === 'charging') boost = charge * .35;
+    exhaust.setAttribute('transform', `translate(-45 -12) scale(${(boost * (.85 + Math.random() * .3)).toFixed(2)})`);
+
+    // el lanzador sigue al auto mientras se carga y luego vuelve con un rebote
+    if (state === 'charging'){ face.x = x - 46; face.v = 0; face.target = face.x; }
+    else face.step(dt);
+    const fx = Math.min(face.x, PLUNGER_REST + 2);
+    plunger.setAttribute('x', (fx - 5).toFixed(1));
+    rod.setAttribute('width', Math.max(0, fx - 9).toFixed(1));
+
+    trackWrap.style.transform = shakeT > 0
+      ? `translate(${(rand(-1, 1) * shakeT * 10).toFixed(1)}px, ${(rand(-1, 1) * shakeT * 6).toFixed(1)}px)`
+      : '';
+  }
+
+  /* ----- controles ----- */
+  hold.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    try { hold.setPointerCapture(e.pointerId); } catch (_) {}
+    startCharge();
+  });
+  hold.addEventListener('pointerup', release);
+  hold.addEventListener('pointercancel', cancelCharge);
+  hold.addEventListener('contextmenu', e => e.preventDefault());
+  hold.addEventListener('keydown', e => {
+    if ((e.key === ' ' || e.key === 'Enter') && !e.repeat){ e.preventDefault(); startCharge(); }
+  });
+  hold.addEventListener('keyup', e => {
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); release(); }
+  });
+  window.addEventListener('blur', cancelCharge);
+
+  $('btnSkip').addEventListener('click', () => { Sound.init(); toGift(); });
+
+  const PAINTS = {
+    rojo: { name:'Rojo fuego',     c:['#ff6a5a', '#e3131b', '#6e0007'] },
+    azul: { name:'Azul eléctrico', c:['#86b4ff', '#1f5bff', '#0a1c6e'] },
+    negro:{ name:'Negro mate',     c:['#7a7a8c', '#2a2a33', '#0a0a0e'] },
+    lima: { name:'Verde lima',     c:['#dcff86', '#5fd62a', '#135c0e'] }
+  };
+  document.querySelectorAll('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = PAINTS[btn.dataset.paint];
+      ['paint0', 'paint1', 'paint2'].forEach((id, i) => $(id).setAttribute('stop-color', p.c[i]));
+      $('packColor').textContent = p.name;
+      document.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-checked', String(b === btn)));
+      buzz(6);
+    });
+  });
+
+  /* ============================================================
+     CAMBIO DE ESCENA
+     ============================================================ */
+  const giftScene = $('giftScene');
+  const veil = $('veil');
+
+  function toGift(){
+    if (gone) return;
+    gone = true;
+    state = 'done';
+    Sound.engine(30, 0);
+    veil.style.transition = 'opacity .28s ease';
+    veil.style.opacity = 1;
+    setTimeout(() => {
+      raceScene.classList.remove('active');
+      giftScene.classList.add('active');
+      speedG.setAttribute('opacity', 0);
+      exhaust.setAttribute('transform', 'translate(-45 -12) scale(0)');
+      spokes.setAttribute('transform', 'rotate(0)');
+      startGift();
+      veil.style.transition = 'opacity .9s ease';
+      veil.style.opacity = 0;
+    }, 320);
+  }
+
+  /* ============================================================
+     EMPAQUE DE COLECCIÓN: cae con rebote, se inclina con el dedo
+     y se puede abrir
+     ============================================================ */
+  const pack = $('pack'), stage = $('packStage'), bubble = $('bubble');
+  const packCar = $('packCar'), sheen = $('sheen');
+  const btnOpenLabel = $('btnOpenLabel');
+
+  const tiltX = new Spring(0, { response:.55, damping:.72 });
+  const tiltY = new Spring(0, { response:.55, damping:.72 });
+  const drop  = new Spring(0, { response:.62, damping:.62 });
+  const lid   = new Spring(0, { response:.6,  damping:.82 });
+  const pop   = new Spring(1, { response:.5,  damping:.45 });
+  let giftOn = false, hovering = false, opened = false, gt = 0, downAt = null;
+
+  function startGift(){
+    giftOn = true;
+    if (!reduceMotion){ drop.x = -window.innerHeight * .7; drop.v = 0; }
+    drop.target = 0;
+    setTimeout(() => {
+      const r = pack.getBoundingClientRect();
+      confetti(r.left + r.width / 2, r.top + r.height * .3, 60, .9);
+      Sound.blip([659, 988], .1, 'triangle', .06);
+      buzz(12);
+    }, reduceMotion ? 100 : 620);
+  }
+
+  function updateGift(dt){
+    gt += dt;
+    if (!hovering){
+      tiltY.target = reduceMotion ? 0 : Math.sin(gt * .7) * 7;
+      tiltX.target = reduceMotion ? 0 : Math.cos(gt * .55) * 3.5;
+    }
+    tiltX.step(dt); tiltY.step(dt); drop.step(dt); lid.step(dt); pop.step(dt);
+
+    pack.style.transform = `translate3d(0, ${drop.x.toFixed(1)}px, 0) rotateX(${tiltX.x.toFixed(2)}deg) rotateY(${tiltY.x.toFixed(2)}deg)`;
+    sheen.style.backgroundPosition = `${(50 - tiltY.x * 3.2).toFixed(1)}% 0`;
+
+    const l = lid.x;
+    bubble.style.transform = `translate3d(${(l * 46).toFixed(1)}px, ${(-l * 150).toFixed(1)}px, ${(40 + l * 80).toFixed(1)}px) rotate(${(l * 22).toFixed(1)}deg)`;
+    bubble.style.opacity = clamp(1 - l * 1.15).toFixed(3);
+    packCar.style.transform = `translateZ(28px) translateY(${(-(pop.x - 1) * 40).toFixed(1)}px) scale(${pop.x.toFixed(3)})`;
+  }
+
+  stage.addEventListener('pointerdown', e => {
+    hovering = true;
+    downAt = { x:e.clientX, y:e.clientY };
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  stage.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse' && !downAt) return;
+    const r = pack.getBoundingClientRect();
+    const nx = clamp(((e.clientX - r.left) / r.width) * 2 - 1, -1, 1);
+    const ny = clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1);
+    hovering = true;
+    tiltY.target = nx * 16;
+    tiltX.target = -ny * 12;
+  });
+  stage.addEventListener('pointerup', e => {
+    if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 8) openPack();
+    downAt = null;
+    if (e.pointerType !== 'mouse') hovering = false;
+  });
+  stage.addEventListener('pointercancel', () => { downAt = null; hovering = false; });
+  stage.addEventListener('pointerleave', () => { if (!downAt) hovering = false; });
+  stage.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openPack(); }
+  });
+
+  function openPack(){
+    if (opened){ celebrate(); return; }
+    opened = true;
+    Sound.init();
+    lid.target = 1;
+    pop.target = 1.12; pop.v = 2;
+    const r = pack.getBoundingClientRect();
+    confetti(r.left + r.width / 2, r.top + r.height * .4, 110, 1.1);
+    Sound.blip([880, 1320, 1760], .08, 'triangle', .07);
+    buzz([15, 30, 15]);
+    toast('¡Es tuyo! Edición 1 de 1 🏁');
+    btnOpenLabel.textContent = 'Celebrar';
+    stage.setAttribute('aria-label', 'Empaque abierto. Toca para celebrar');
+  }
+
+  function celebrate(){
+    confetti(0, H * .7, 60, 1.25, -Math.PI / 2.2, -Math.PI / 7);
+    confetti(W, H * .7, 60, 1.25, -Math.PI + Math.PI / 7, -Math.PI + Math.PI / 2.2);
+    pop.v += 1.6;
+    Sound.blip([523, 659, 784, 1047], .1, 'triangle', .08);
+    buzz([20, 40, 20]);
+    toast('🏁 Premio para el ganador: yo');
+  }
+
+  $('btnOpen').addEventListener('click', openPack);
+
+  /* ============================================================
+     CARTA: hoja que sube desde abajo, se arrastra y se puede lanzar
+     ============================================================ */
+  const sheet = $('sheet'), scrim = $('scrim'), grab = $('sheetGrab'), btnCard = $('btnCard');
+  let sheetY = 0, sheetH = 700, sheetAnim = null, sheetOpen = false;
+
+  function setSheetY(y){
+    sheetY = y;
+    sheet.style.transform = `translate3d(-50%, ${y.toFixed(1)}px, 0)`;
+    const t = clamp(1 - y / sheetH);
+    scrim.style.opacity = t.toFixed(3);
+    giftScene.style.transform = reduceMotion ? '' : `scale(${(1 - .035 * t).toFixed(4)})`;
+  }
+
+  function openCard(){
+    if (sheetOpen) return;
+    sheetOpen = true;
+    sheetH = sheet.offsetHeight + 40;
+    scrim.classList.add('open');
+    sheet.classList.add('open');
+    if (sheetAnim) sheetAnim.cancel();
+    if (reduceMotion){ setSheetY(0); scrim.style.opacity = 1; }
+    else {
+      setSheetY(sheetH);
+      sheetAnim = spring({ from:sheetH, to:0, response:.5, damping:.88, onUpdate:setSheetY });
+    }
+    sheet.focus({ preventScroll:true });
+  }
+
+  function closeCard(velocity = 0){
+    if (!sheetOpen) return;
+    sheetOpen = false;
+    if (sheetAnim) sheetAnim.cancel();
+    const done = () => {
+      sheet.classList.remove('open');
+      scrim.classList.remove('open');
+      giftScene.style.transform = '';
+      btnCard.focus({ preventScroll:true });
+    };
+    if (reduceMotion){ scrim.style.opacity = 0; done(); }
+    else sheetAnim = spring({ from:sheetY, to:sheetH, velocity, response:.38, damping:1, onUpdate:setSheetY, onDone:done });
+  }
+
+  btnCard.addEventListener('click', openCard);
+  $('btnCloseCard').addEventListener('click', () => closeCard());
+  scrim.addEventListener('click', () => closeCard());
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
+
+  let sDrag = null;
+  grab.addEventListener('pointerdown', e => {
+    if (e.target.closest('button') || !sheetOpen) return;
+    if (sheetAnim) sheetAnim.cancel();
+    sDrag = { startY:e.clientY, startSheetY:sheetY, v:0, lastY:e.clientY, lastT:e.timeStamp };
+    try { grab.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  grab.addEventListener('pointermove', e => {
+    if (!sDrag) return;
+    const raw = sDrag.startSheetY + (e.clientY - sDrag.startY);
+    setSheetY(raw < 0 ? -rubberband(-raw, 300) : raw);
+    const dtm = Math.max(1, e.timeStamp - sDrag.lastT);
+    sDrag.v += (((e.clientY - sDrag.lastY) / dtm) * 1000 - sDrag.v) * .35;
+    sDrag.lastY = e.clientY; sDrag.lastT = e.timeStamp;
+  });
+  const endSheetDrag = () => {
+    if (!sDrag) return;
+    const vel = sDrag.v;
+    sDrag = null;
+    if (sheetY + project(vel) > sheetH * .55) closeCard(vel);
+    else sheetAnim = spring({ from:sheetY, to:0, velocity:vel, response:.42, damping:.82, onUpdate:setSheetY });
+  };
+  grab.addEventListener('pointerup', endSheetDrag);
+  grab.addEventListener('pointercancel', endSheetDrag);
+
+  /* ============================================================
+     BUCLE PRINCIPAL
+     ============================================================ */
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min((now - last) / 1000, 1 / 30);
+    last = now;
+    if (!gone){ updateRace(dt, now); renderRace(dt); }
+    if (giftOn) updateGift(dt);
+    drawParticles(dt * 60);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
